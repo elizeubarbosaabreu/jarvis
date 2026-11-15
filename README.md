@@ -64,6 +64,13 @@ rm ~/.config/autostart/jarvis-wake.desktop
 | “maximizar o brave” | maximiza |
 | “o que está aberto?” | lista as janelas |
 | “aumentar/diminuir o volume”, “volume em 30”, “silenciar” | áudio |
+| “abrir o youtube”, “tocar música” | abre o YouTube (ou o YouTube Music) no navegador padrão |
+| “pesquisar cortella no youtube” | abre a busca do YouTube |
+| “tocar evidências no youtube”, “abrir o vídeo …” | toca o primeiro resultado da busca |
+
+Os comandos do YouTube abrem o navegador padrão (`gio open`) e, no caso de
+“tocar”, procuram o primeiro vídeo da busca na própria página de resultados —
+sem API e sem chave.
 
 O controle de janelas usa uma extensão do GNOME (`jarvis-control@elizeu`) que
 expõe um serviço DBus — é o caminho que funciona no **Wayland**. O GNOME só

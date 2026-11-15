@@ -394,6 +394,23 @@ class Desktop:
                     return False
         return False
 
+    # -- URLs -------------------------------------------------------------
+    @staticmethod
+    def open_url(url: str) -> bool:
+        """Abre uma URL no navegador padrão do GNOME."""
+        for argv in (["gio", "open", url], ["xdg-open", url]):
+            try:
+                subprocess.Popen(
+                    argv,
+                    start_new_session=True,
+                    stdout=subprocess.DEVNULL,
+                    stderr=subprocess.DEVNULL,
+                )
+                return True
+            except Exception:
+                continue
+        return False
+
     # -- volume -----------------------------------------------------------
     @staticmethod
     def volume(delta: str | None = None, mute: bool | None = None) -> int | None:

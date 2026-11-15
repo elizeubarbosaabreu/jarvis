@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import re
 
+from . import youtube
 from .desktop import Desktop
 from .util import normalize
 
@@ -40,6 +41,34 @@ VOL_DOWN_RE = re.compile(
     r"(?:\s+(?:em\s+|para\s+|a\s+)?(\d+))?$"
 )
 VOL_SET_RE = re.compile(r"^(?:volume|som)\s+(?:em|para|a)\s+(\d+)(?:\s*por\s*cento)?$")
+YT = r"(?:you\s*tube|yutube|yt)"
+YT_HOME_RE = re.compile(
+    rf"^(?:abrir|abre|abra|ir para|vai para|entrar no|entra no)\s+(?:o\s+)?(?:site\s+do\s+)?{YT}$",
+    re.IGNORECASE,
+)
+YT_MUSIC_RE = re.compile(
+    rf"^(?:abrir|abre|abra|ir para|vai para)\s+(?:o\s+)?{YT}\s+music$|"
+    r"^(?:tocar|toca|colocar|coloca|passar|passa)\s+(?:uma\s+)?m[uú]sica$",
+    re.IGNORECASE,
+)
+YT_SEARCH_RE = re.compile(
+    rf"^(?:pesquisar|pesquisa|buscar|busca|procurar|procura|procurar por)\s+(.+?)\s+"
+    rf"(?:no|na|em)\s+{YT}$",
+    re.IGNORECASE,
+)
+YT_PLAY_RE = re.compile(
+    rf"^(?:tocar|toca|colocar|coloca|passar|passa|abrir|abre|abra|assistir|assiste|"
+    rf"ver|mostrar|mostra)\s+(?:o\s+|a\s+)?(?:v[ií]deo|clipe|m[uú]sica|som)?\s*"
+    rf"(?:do\s+|da\s+|de\s+)?(.+?)\s+(?:no|na|em)\s+{YT}$",
+    re.IGNORECASE,
+)
+YT_IMPLICIT_RE = re.compile(
+    r"^(?:tocar|toca|colocar|coloca|passar|passa|assistir|assiste|ver|mostrar|mostra|"
+    r"abrir|abre|abra)\s+(?:o\s+|a\s+)?(?:v[ií]deo|clipe|m[uú]sica)\s+"
+    r"(?:do\s+|da\s+|de\s+)?(.+)$",
+    re.IGNORECASE,
+)
+
 MUTE_RE = re.compile(r"^(?:silenciar|silencia|mudo|muta|mutar|tirar o som|sem som)$")
 UNMUTE_RE = re.compile(
     r"^(?:ativar|ativa|ligar|liga|voltar|volta|tirar)\s+(?:o\s+)?(?:som|mudo|audio|áudio)$|"
@@ -74,6 +103,18 @@ class Skills:
         norm = normalize(text)
         if not norm:
             return None
+        raw = text.strip().rstrip(" .!?,;:")
+
+        if match := YT_MUSIC_RE.match(raw):
+            return self._youtube_music()
+        if match := YT_HOME_RE.match(raw):
+            return self._youtube_home()
+        if match := YT_SEARCH_RE.match(raw):
+            return self._youtube_search(match.group(1))
+        if match := YT_PLAY_RE.match(raw):
+            return self._youtube_play(match.group(1))
+        if match := YT_IMPLICIT_RE.match(raw):
+            return self._youtube_play(match.group(1))
 
         if SHOW_DESKTOP_RE.match(norm):
             return self._show_desktop()
@@ -104,6 +145,50 @@ class Skills:
         if match := FOCUS_RE.match(norm):
             return self._focus(match.group(1))
         return None
+
+    # -- YouTube ----------------------------------------------------------
+    @staticmethod
+    def _clean_term(term: str) -> str:
+        term = term.strip(" \t\"'“”")
+        for article in ("o ", "a ", "os ", "as ", "um ", "uma "):
+            if term.lower().startswith(article):
+                term = term[len(article) :].strip()
+                break
+        return term
+
+    def _youtube_home(self) -> str:
+        if youtube.open_url(youtube.HOME):
+            return "Abrindo o YouTube, senhor."
+        return "Não consegui abrir o navegador, senhor."
+
+    def _youtube_music(self) -> str:
+        if youtube.open_url(youtube.MUSIC):
+            return "Abrindo o YouTube Music, senhor."
+        return "Não consegui abrir o navegador, senhor."
+
+    def _youtube_search(self, term: str) -> str:
+        term = self._clean_term(term)
+        if not term:
+            return self._youtube_home()
+        if youtube.open_url(youtube.search_url(term)):
+            return f"Procurando {term} no YouTube, senhor."
+        return "Não consegui abrir o navegador, senhor."
+
+    def _youtube_play(self, term: str) -> str:
+        term = self._clean_term(term)
+        if not term:
+            return self._youtube_music()
+
+        video = youtube.first_video(term)
+        if video and youtube.open_url(video["url"]):
+            title = video.get("title") or term
+            if len(title) > 70:
+                title = title[:67].rstrip() + "..."
+            return f"Tocando {title}, senhor."
+
+        if youtube.open_url(youtube.search_url(term)):
+            return f"Não achei um vídeo certo, mas abri a busca por {term}, senhor."
+        return "Não consegui abrir o navegador, senhor."
 
     # -- ações ------------------------------------------------------------
     def _open(self, query: str) -> str:
