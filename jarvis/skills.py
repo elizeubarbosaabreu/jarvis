@@ -77,6 +77,16 @@ YT_ASSISTIR_RE = re.compile(
     rf"^(?:assistir|assiste|assista|assistir o|assistir a)\s+(.+?)(?:\s+(?:no|na|em)\s+{YT})?$",
     re.IGNORECASE,
 )
+WRITE_RE = re.compile(
+    r"^(?:escreva|escreve|escrever|digite|digita|digitar|anote|anota|"
+    r"registre|registra|apontar|aponta|escreva isto|escreva isso)$",
+    re.IGNORECASE,
+)
+WRITE_WITH_TEXT_RE = re.compile(
+    r"^(?:escreva|escreve|escrever|digite|digita|digitar|anote|anota|"
+    r"registre|registra|apontar|aponta)\s+(.+)$",
+    re.IGNORECASE,
+)
 
 MUTE_RE = re.compile(r"^(?:silenciar|silencia|mudo|muta|mutar|tirar o som|sem som)$")
 UNMUTE_RE = re.compile(
@@ -128,6 +138,10 @@ class Skills:
             return self._youtube_ouvir(match.group(1))
         if match := YT_ASSISTIR_RE.match(raw):
             return self._youtube_assistir(match.group(1))
+        if match := WRITE_RE.match(raw):
+            return self._write_prompt()
+        if match := WRITE_WITH_TEXT_RE.match(raw):
+            return self._write(match.group(1))
 
         if SHOW_DESKTOP_RE.match(norm):
             return self._show_desktop()
@@ -219,6 +233,21 @@ class Skills:
     def _youtube_assistir(self, term: str) -> str:
         """Assiste no YouTube (toca o primeiro resultado da busca)."""
         return self._youtube_play(term)
+
+    # -- escrever (digitação) ---------------------------------------------
+    def _write_prompt(self) -> str:
+        return "O que o senhor quer que eu escreva?"
+
+    def _write(self, term: str) -> str:
+        term = term.strip(" \t\"'“”")
+        if not term:
+            return self._write_prompt()
+        if self.d.write(term):
+            return (
+                f"Escrevi {term[:60]} na área de transferência e abri o editor, "
+                f"senhor. Cole com Ctrl+V."
+            )
+        return "Não consegui escrever, senhor."
 
     # -- ações ------------------------------------------------------------
     def _open(self, query: str) -> str:

@@ -485,6 +485,40 @@ class Desktop:
                 continue
         return False
 
+    # -- escrever (digitação) ---------------------------------------------
+    @staticmethod
+    def write(text: str) -> bool:
+        """Cola o texto na área de transferência e abre o editor de texto.
+
+        No Wayland do GNOME 46 não há ferramenta disponível para injetar
+        teclas em janelas arbitrárias (ydotoold inativo, /dev/uinput root-only,
+        wtype/xdotool ausentes). O caminho confiável é: clipboard + editor.
+        """
+        if not text:
+            return False
+        try:
+            subprocess.run(
+                ["wl-copy"],
+                input=text.encode("utf-8"),
+                check=True,
+                capture_output=True,
+            )
+        except (FileNotFoundError, subprocess.CalledProcessError):
+            return False
+
+        for argv in (["gnome-text-editor"], ["gedit"], ["mousepad"], ["leafpad"]):
+            try:
+                subprocess.Popen(
+                    argv,
+                    start_new_session=True,
+                    stdout=subprocess.DEVNULL,
+                    stderr=subprocess.DEVNULL,
+                )
+                return True
+            except FileNotFoundError:
+                continue
+        return False
+
     # -- volume -----------------------------------------------------------
     @staticmethod
     def volume(delta: str | None = None, mute: bool | None = None) -> int | None:

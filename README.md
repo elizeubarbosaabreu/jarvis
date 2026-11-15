@@ -69,6 +69,7 @@ rm ~/.config/autostart/jarvis-wake.desktop
 | “tocar evidências no youtube”, “abrir o vídeo …” | toca o primeiro resultado da busca |
 | “ouvir <música> [no youtube]” | procura no YouTube Music |
 | “assistir <vídeo> [no youtube]” | toca o primeiro resultado do YouTube |
+| “escreva <texto>”, “digite <texto>”, “anote <texto>” | coloca no clipboard e abre o editor de texto (Cole com Ctrl+V) |
 
 Os comandos do YouTube abrem o navegador padrão (`gio open`) e, no caso de
 “tocar”, procuram o primeiro vídeo da busca na própria página de resultados —
