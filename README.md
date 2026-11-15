@@ -113,3 +113,7 @@ processos do programa); minimizar/maximizar ficam indisponíveis.
 - **Abre dois terminais**: o daemon pausa ao ver `run/jarvis.lock`; se algo
   travou, apague o arquivo.
 - **Logs**: `logs/jarvis.log`.
+
+## Licença
+
+MIT — veja [LICENSE](LICENSE).
