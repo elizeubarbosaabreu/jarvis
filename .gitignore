@@ -1,0 +1,16 @@
+# ambiente e dependências
+.venv/
+__pycache__/
+*.py[cod]
+
+# modelos baixados pelo install.sh
+models/
+voices/
+
+# estado em tempo de execução
+logs/
+run/
+*.log
+
+# áudio de teste
+*.wav

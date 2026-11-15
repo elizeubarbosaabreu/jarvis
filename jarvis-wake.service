@@ -1,0 +1,19 @@
+[Unit]
+Description=Jarvis - escuta da palavra-chave "Ola Jarvis"
+After=graphical-session.target pipewire.service
+PartOf=graphical-session.target
+
+[Service]
+Type=simple
+WorkingDirectory=/home/elizeu/jarvis
+ExecStart=/home/elizeu/jarvis/.venv/bin/python /home/elizeu/jarvis/wake_daemon.py
+Restart=always
+RestartSec=3
+Environment=PYTHONUNBUFFERED=1
+Environment=DISPLAY=:0
+Environment=XDG_RUNTIME_DIR=/run/user/1000
+Environment=DBUS_SESSION_BUS_ADDRESS=unix:path=/run/user/1000/bus
+Environment=PULSE_SERVER=unix:/run/user/1000/pulse/native
+
+[Install]
+WantedBy=default.target

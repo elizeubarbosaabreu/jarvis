@@ -1,0 +1,9 @@
+[Desktop Entry]
+Type=Application
+Name=Jarvis (palavra-chave)
+Comment=Escuta "Olá Jarvis" e abre o assistente
+Exec=/home/elizeu/jarvis/.venv/bin/python /home/elizeu/jarvis/wake_daemon.py
+Path=/home/elizeu/jarvis
+Terminal=false
+X-GNOME-Autostart-enabled=true
+NoDisplay=true

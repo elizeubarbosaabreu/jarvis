@@ -1,0 +1,8 @@
+{
+  "uuid": "jarvis-control@elizeu",
+  "name": "Jarvis Control",
+  "description": "Controle de janelas via DBus para o assistente Jarvis (Wayland).",
+  "shell-version": ["45", "46", "47"],
+  "version": 1,
+  "url": "https://localhost/jarvis"
+}
