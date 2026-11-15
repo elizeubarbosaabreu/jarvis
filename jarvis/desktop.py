@@ -81,6 +81,22 @@ NAME_PT = {
     "spotify": "Spotify",
 }
 
+# nomes de processo que não batem com o nome do .desktop
+PROCESS_ALIASES = {
+    "brave-browser": ["brave"],
+    "brave-browser-stable": ["brave"],
+    "brave": ["brave"],
+    "google-chrome": ["chrome"],
+    "google-chrome-stable": ["chrome"],
+    "chromium-browser": ["chromium"],
+    "microsoft-edge": ["msedge"],
+    "org.telegram.desktop": ["telegram-desktop", "telegram"],
+    "com.spotify.Client": ["spotify"],
+    "code": ["code"],
+    "org.gnome.Console": ["kgx"],
+    "org.gnome.Terminal": ["gnome-terminal-", "gnome-terminal"],
+}
+
 FILLERS = (
     "o ", "a ", "os ", "as ", "um ", "uma ",
     "programa ", "aplicativo ", "app ", "janela ", "do ", "da ",
@@ -111,6 +127,7 @@ class App:
     generic: str = ""
     keywords: str = ""
     terminal: bool = False
+    wm_class: str = ""
     path: Path | None = None
 
     @property
@@ -185,6 +202,7 @@ class Desktop:
             generic=data.get("GenericName[pt_BR]") or data.get("GenericName", ""),
             keywords=data.get("Keywords[pt_BR]") or data.get("Keywords", ""),
             terminal=data.get("Terminal", "").lower() == "true",
+            wm_class=data.get("StartupWMClass", ""),
             path=path,
         )
 
@@ -318,42 +336,98 @@ class Desktop:
     def restore_all(self) -> dict:
         return self._call("RestoreAll") or {}
 
-    def _terminate_processes(self, app: App) -> int:
-        exe = ""
+    def _process_tokens(self, app: App) -> set[str]:
+        """Nomes pelos quais os processos deste aplicativo podem aparecer."""
+        names: set[str] = set()
         if app.exec:
             try:
-                exe = Path(shlex.split(app.exec)[0]).name
+                names.add(Path(shlex.split(app.exec)[0]).name)
             except Exception:
-                exe = ""
-        tokens = {t for t in (exe, Path(app.id).name) if t and len(t) > 3}
-        if not tokens:
-            return 0
+                pass
+        names.add(Path(app.id).name)
+        if app.wm_class:
+            names.add(app.wm_class)
+        for extra in PROCESS_ALIASES.get(app.id, []):
+            names.add(extra)
+        for extra in PROCESS_ALIASES.get(Path(app.id).name, []):
+            names.add(extra)
 
-        me = {os.getpid(), os.getppid()}
-        targets: list[int] = []
+        tokens: set[str] = set()
+        for name in names:
+            name = name.strip().lower()
+            if not name:
+                continue
+            tokens.add(name)
+            for suffix in ("-stable", "-bin", ".bin", "-desktop"):
+                if name.endswith(suffix) and len(name) > len(suffix) + 3:
+                    tokens.add(name[: -len(suffix)])
+        return {t for t in tokens if len(t) >= 4}
+
+    @staticmethod
+    def _alive(pid: int) -> bool:
+        try:
+            os.kill(pid, 0)
+        except OSError:
+            return False
+        return True
+
+    def _find_processes(self, tokens: set[str]) -> list[int]:
+        if not tokens:
+            return []
+        mine = {os.getpid(), os.getppid(), os.getpgrp()}
+        found: list[int] = []
         for entry in Path("/proc").iterdir():
             if not entry.name.isdigit():
                 continue
             pid = int(entry.name)
-            if pid in me:
+            if pid in mine:
                 continue
             try:
+                if os.getpgid(pid) in mine:
+                    continue
                 comm = (entry / "comm").read_text().strip()
-                cmdline = (entry / "cmdline").read_bytes().replace(b"\0", b" ").decode(
-                    "utf-8", "replace"
-                )
+                raw = (entry / "cmdline").read_bytes()
+                cmdline = raw.replace(b"\0", b" ").decode("utf-8", "replace").strip()
+                exe = Path(os.readlink(entry / "exe")).name
             except OSError:
                 continue
-            if any(tok in cmdline or comm.startswith(tok[:15]) for tok in tokens):
-                targets.append(pid)
+            if "jarvis.app" in cmdline or "wake_daemon" in cmdline:
+                continue
+
+            argv0 = Path(cmdline.split(" ", 1)[0]).name if cmdline else ""
+            for tok in tokens:
+                if (
+                    exe == tok
+                    or argv0 == tok
+                    or comm == tok[:15]
+                    or (len(tok) >= 5 and comm.startswith(tok[:15]))
+                ):
+                    found.append(pid)
+                    break
+        return found
+
+    def _terminate_processes(self, app: App) -> int:
+        tokens = self._process_tokens(app)
+        targets = self._find_processes(tokens)
+        if not targets:
+            return 0
 
         for pid in targets:
             try:
                 os.kill(pid, signal.SIGTERM)
             except OSError:
                 pass
-        if targets:
-            time.sleep(0.6)
+
+        deadline = time.time() + 2.5
+        rest = list(targets)
+        while rest and time.time() < deadline:
+            time.sleep(0.2)
+            rest = [pid for pid in rest if self._alive(pid)]
+        for pid in rest:
+            try:
+                os.kill(pid, signal.SIGKILL)
+            except OSError:
+                pass
         return len(targets)
 
     # -- aplicativos ------------------------------------------------------
