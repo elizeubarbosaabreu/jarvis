@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import re
 import urllib.parse
+from pathlib import Path
 
 from . import youtube
 from .desktop import Desktop
@@ -87,6 +88,14 @@ WRITE_WITH_TEXT_RE = re.compile(
     r"registre|registra|apontar|aponta)\s+(.+)$",
     re.IGNORECASE,
 )
+SHUTDOWN_RE = re.compile(
+    r"^(?:desligar|desliga|desligue|encerrar|encerra|encerre|pare|pare o|"
+    r"pare tudo|finalizar|finalize|mate o|mata o|matar o|maten o|"
+    r"desligue o jarvis|encerre o jarvis|pare o jarvis|desligar o jarvis|"
+    r"encerrar o jarvis|desligar tudo|encerrar tudo|desligar completamente|"
+    r"encerrar completamente)\s*(?:o jarvis|a tudo|tudo|completamente)?$",
+    re.IGNORECASE,
+)
 
 MUTE_RE = re.compile(r"^(?:silenciar|silencia|mudo|muta|mutar|tirar o som|sem som)$")
 UNMUTE_RE = re.compile(
@@ -142,6 +151,8 @@ class Skills:
             return self._write_prompt()
         if match := WRITE_WITH_TEXT_RE.match(raw):
             return self._write(match.group(1))
+        if SHUTDOWN_RE.match(norm):
+            return self._shutdown()
 
         if SHOW_DESKTOP_RE.match(norm):
             return self._show_desktop()
@@ -249,7 +260,37 @@ class Skills:
             )
         return "Não consegui escrever, senhor."
 
-    # -- ações ------------------------------------------------------------
+    # -- desligamento completo ---------------------------------------------
+    def _shutdown(self) -> str:
+        """Encerra o assistente e para o daemon da palavra-chave.
+
+        O Jarvis só volta a ser chamado pelo menu (jarvis.desktop) ou
+        pelo terminal (`jarvis` / `wake_daemon.py`).
+        """
+        self._stop_wake_daemon()
+        return "__jarvis_shutdown__"
+
+    @staticmethod
+    def _stop_wake_daemon() -> None:
+        """Mata o wake_daemon (PID em run/wake.lock) e qualquer outro."""
+        import os
+        import signal
+        import subprocess
+
+        # 1) tenta pelo PID gravado no lock do daemon
+        lock_path = Path.home() / "jarvis" / "run" / "wake.lock"
+        try:
+            pid = int(lock_path.read_text().strip())
+            os.kill(pid, signal.SIGTERM)
+        except (OSError, ValueError, FileNotFoundError):
+            pass
+
+        # 2) garante: mata qualquer wake_daemon sobrando
+        subprocess.run(
+            ["pkill", "-f", "wake_daemon.py"],
+            capture_output=True,
+        )
+
     def _open(self, query: str) -> str:
         app = self.d.resolve(query)
         if app is None:

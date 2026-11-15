@@ -82,12 +82,33 @@ Icon=utilities-terminal
 Categories=Utility;
 EOF
   command -v update-desktop-database >/dev/null && update-desktop-database "$HOME/.local/share/applications" || true
+
+  echo "==> lançador na área de trabalho (botão para abrir)"
+  DESKTOP_DIR="$HOME/Desktop"
+  [ -d "$DESKTOP_DIR" ] || DESKTOP_DIR="$HOME/Área de trabalho"
+  if [ -d "$DESKTOP_DIR" ]; then
+    cat > "$DESKTOP_DIR/jarvis.desktop" <<DESKEOF
+[Desktop Entry]
+Type=Application
+Name=JARVIS
+Comment=Assistente por voz com rosto ASCII
+Exec=bash -lc '$ROOT/run.sh'
+Path=$ROOT
+Terminal=true
+Icon=utilities-terminal
+Categories=Utility;
+DESKEOF
+    chmod +x "$DESKTOP_DIR/jarvis.desktop" 2>/dev/null || true
+    command -v update-desktop-database >/dev/null && update-desktop-database "$DESKTOP_DIR" || true
+  fi
 fi
 
 echo
 echo "Pronto."
 echo "  falar 'Olá Jarvis'  -> abre o terminal"
 echo "  jarvis              -> abre manualmente"
+echo "  botão JARVIS na área de trabalho  -> abre pelo menu/launcher"
+echo "  desligar o jarvis (por voz)  -> encerra tudo até ser chamado novamente"
 echo "  desligar autostart  -> rm ~/.config/autostart/jarvis-wake.desktop"
 echo
 echo "Se acabou de instalar: saia e entre na sessão uma vez para o GNOME"

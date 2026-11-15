@@ -172,6 +172,9 @@ class JarvisApp:
 
             handled = self.skills.handle(text)
             if handled:
+                if handled == "__jarvis_shutdown__":
+                    self.say("Desligando o Jarvis, senhor. Até a próxima.")
+                    return 0
                 self.say(handled)
                 continue
 

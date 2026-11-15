@@ -70,6 +70,19 @@ rm ~/.config/autostart/jarvis-wake.desktop
 | “ouvir <música> [no youtube]” | procura no YouTube Music |
 | “assistir <vídeo> [no youtube]” | toca o primeiro resultado do YouTube |
 | “escreva <texto>”, “digite <texto>”, “anote <texto>” | coloca no clipboard e abre o editor de texto (Cole com Ctrl+V) |
+| “desligar o jarvis”, “encerrar o jarvis”, “pare o jarvis” | desliga tudo (app + palavra-chave) até ser chamado novamente |
+| “abrir o jarvis” (pelo botão/menu) | abre o assistente novamente |
+
+## Abrir e desligar
+
+**Botão para abrir:** após a instalação, um ícone **JARVIS** aparece na área de
+trabalho e no menu de aplicativos. Clique para abrir o terminal com o rosto
+ASCII. Também pode abrir pelo terminal com `jarvis`.
+
+**Desligar totalmente:** diga “desligar o jarvis” (ou “encerrar o jarvis”,
+“pare o jarvis”). Isso encerra o assistente **e para o daemon da palavra-chave**.
+O Jarvis só volta a ouvir quando você abrir novamente pelo botão da área de
+trabalho, pelo menu ou pelo terminal (`jarvis` ou `wake_daemon.py`).
 
 Os comandos do YouTube abrem o navegador padrão (`gio open`) e, no caso de
 “tocar”, procuram o primeiro vídeo da busca na própria página de resultados —
