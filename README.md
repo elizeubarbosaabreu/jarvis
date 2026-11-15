@@ -67,6 +67,8 @@ rm ~/.config/autostart/jarvis-wake.desktop
 | “abrir o youtube”, “tocar música” | abre o YouTube (ou o YouTube Music) no navegador padrão |
 | “pesquisar cortella no youtube” | abre a busca do YouTube |
 | “tocar evidências no youtube”, “abrir o vídeo …” | toca o primeiro resultado da busca |
+| “ouvir <música> [no youtube]” | procura no YouTube Music |
+| “assistir <vídeo> [no youtube]” | toca o primeiro resultado do YouTube |
 
 Os comandos do YouTube abrem o navegador padrão (`gio open`) e, no caso de
 “tocar”, procuram o primeiro vídeo da busca na própria página de resultados —

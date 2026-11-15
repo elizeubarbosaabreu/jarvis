@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import re
+import urllib.parse
 
 from . import youtube
 from .desktop import Desktop
@@ -68,6 +69,14 @@ YT_IMPLICIT_RE = re.compile(
     r"(?:do\s+|da\s+|de\s+)?(.+)$",
     re.IGNORECASE,
 )
+YT_OUVIR_RE = re.compile(
+    rf"^(?:ouvir|ouve|ouça|ouça o|ouvir o|ouvir a)\s+(.+?)(?:\s+(?:no|na|em)\s+{YT})?$",
+    re.IGNORECASE,
+)
+YT_ASSISTIR_RE = re.compile(
+    rf"^(?:assistir|assiste|assista|assistir o|assistir a)\s+(.+?)(?:\s+(?:no|na|em)\s+{YT})?$",
+    re.IGNORECASE,
+)
 
 MUTE_RE = re.compile(r"^(?:silenciar|silencia|mudo|muta|mutar|tirar o som|sem som)$")
 UNMUTE_RE = re.compile(
@@ -115,6 +124,10 @@ class Skills:
             return self._youtube_play(match.group(1))
         if match := YT_IMPLICIT_RE.match(raw):
             return self._youtube_play(match.group(1))
+        if match := YT_OUVIR_RE.match(raw):
+            return self._youtube_ouvir(match.group(1))
+        if match := YT_ASSISTIR_RE.match(raw):
+            return self._youtube_assistir(match.group(1))
 
         if SHOW_DESKTOP_RE.match(norm):
             return self._show_desktop()
@@ -189,6 +202,23 @@ class Skills:
         if youtube.open_url(youtube.search_url(term)):
             return f"Não achei um vídeo certo, mas abri a busca por {term}, senhor."
         return "Não consegui abrir o navegador, senhor."
+
+    def _youtube_ouvir(self, term: str) -> str:
+        """Ouvi no YouTube Music (busca ou reprodução direta)."""
+        term = self._clean_term(term)
+        if not term:
+            return self._youtube_music()
+
+        music_url = (
+            "https://music.youtube.com/search?q=" + urllib.parse.quote_plus(term)
+        )
+        if youtube.open_url(music_url):
+            return f"Procurando {term} no YouTube Music, senhor."
+        return "Não consegui abrir o navegador, senhor."
+
+    def _youtube_assistir(self, term: str) -> str:
+        """Assiste no YouTube (toca o primeiro resultado da busca)."""
+        return self._youtube_play(term)
 
     # -- ações ------------------------------------------------------------
     def _open(self, query: str) -> str:
