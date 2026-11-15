@@ -41,15 +41,38 @@ Para ligar a escuta contínua da palavra-chave:
 
 ```bash
 ./install.sh                  # instala tudo e o autostart do login
-setsid nohup .venv/bin/python wake_daemon.py >/dev/null 2>&1 &
 ```
 
-Desligar a escuta contínua:
+## Botão no painel
+
+Depois de sair e entrar uma vez (o GNOME só lê a extensão no login), aparece
+um ícone de microfone na barra superior:
+
+- **clique esquerdo**: abre o JARVIS (ou traz a janela para frente);
+- **clique direito**: menu com *Abrir JARVIS* e *Desligar JARVIS*.
+
+## Desligar tudo
 
 ```bash
-pkill -f wake_daemon.py
-rm ~/.config/autostart/jarvis-wake.desktop
+jarvis off       # encerra o app, para a escuta e bloqueia o autostart
+jarvis status    # mostra o estado
+jarvis           # religa a escuta e abre o assistente
 ```
+
+`jarvis off` (o mesmo que `jarvis-ctl off`) deixa o Jarvis em silêncio até
+ele ser chamado de novo pelo menu, pelo botão do painel ou pelo terminal.
+O autostart do login fica bloqueado enquanto o desligamento durar.
+
+Por voz, diga “desligar o jarvis”, “encerrar o jarvis” ou “pare o jarvis”.
+
+## Comandos de terminal
+
+| Comando | O que faz |
+|---|---|
+| `jarvis` | religa a escuta e abre o assistente |
+| `jarvis off` | desliga app + escuta e bloqueia o autostart |
+| `jarvis status` | mostra o estado atual |
+| `jarvis-ctl open` | abre pelo botão/menu (usado pela extensão) |
 
 ## Comandos de desktop
 
@@ -71,18 +94,6 @@ rm ~/.config/autostart/jarvis-wake.desktop
 | “assistir <vídeo> [no youtube]” | toca o primeiro resultado do YouTube |
 | “escreva <texto>”, “digite <texto>”, “anote <texto>” | coloca no clipboard e abre o editor de texto (Cole com Ctrl+V) |
 | “desligar o jarvis”, “encerrar o jarvis”, “pare o jarvis” | desliga tudo (app + palavra-chave) até ser chamado novamente |
-| “abrir o jarvis” (pelo botão/menu) | abre o assistente novamente |
-
-## Abrir e desligar
-
-**Botão para abrir:** após a instalação, um ícone **JARVIS** aparece na área de
-trabalho e no menu de aplicativos. Clique para abrir o terminal com o rosto
-ASCII. Também pode abrir pelo terminal com `jarvis`.
-
-**Desligar totalmente:** diga “desligar o jarvis” (ou “encerrar o jarvis”,
-“pare o jarvis”). Isso encerra o assistente **e para o daemon da palavra-chave**.
-O Jarvis só volta a ouvir quando você abrir novamente pelo botão da área de
-trabalho, pelo menu ou pelo terminal (`jarvis` ou `wake_daemon.py`).
 
 Os comandos do YouTube abrem o navegador padrão (`gio open`) e, no caso de
 “tocar”, procuram o primeiro vídeo da busca na própria página de resultados —
@@ -99,6 +110,7 @@ processos do programa); minimizar/maximizar ficam indisponíveis.
 | Peça | Papel |
 |---|---|
 | `wake_daemon.py` | fica ouvindo o microfone com VAD + Whisper `base` e abre o terminal ao ouvir “jarvis”. Pausa enquanto o assistente está aberto (lock em `run/jarvis.lock`). |
+| `jarvis-ctl` | abre/desliga tudo (app + escuta) e é chamado pelo botão do painel e pelo menu. |
 | `jarvis/app.py` | laço de conversa: grava o comando, transcreve, consulta o cérebro e fala. |
 | `jarvis/face.py` | rosto ASCII com olhos que piscam, boca que acompanha a voz e equalizador. |
 | `jarvis/audio.py` | microfone, detecção de fala e reprodução com nível de áudio. |

@@ -3,7 +3,6 @@ from __future__ import annotations
 
 import re
 import urllib.parse
-from pathlib import Path
 
 from . import youtube
 from .desktop import Desktop
@@ -264,30 +263,39 @@ class Skills:
     def _shutdown(self) -> str:
         """Encerra o assistente e para o daemon da palavra-chave.
 
-        O Jarvis só volta a ser chamado pelo menu (jarvis.desktop) ou
-        pelo terminal (`jarvis` / `wake_daemon.py`).
+        Deixa run/disabled para o autostart não ressuscitar no login.
+        O Jarvis só volta a ser chamado pelo menu, pelo botão do painel
+        ou pelo terminal (`jarvis`).
         """
+        from . import config
+
+        (config.RUN / "disabled").touch()
         self._stop_wake_daemon()
         return "__jarvis_shutdown__"
 
     @staticmethod
     def _stop_wake_daemon() -> None:
-        """Mata o wake_daemon (PID em run/wake.lock) e qualquer outro."""
+        """Para o wake_daemon pelo PID do lock e por padrão específico."""
         import os
         import signal
         import subprocess
 
-        # 1) tenta pelo PID gravado no lock do daemon
-        lock_path = Path.home() / "jarvis" / "run" / "wake.lock"
+        from . import config
+
+        subprocess.run(
+            ["systemctl", "--user", "stop", "jarvis-wake.service"],
+            capture_output=True,
+        )
+
         try:
-            pid = int(lock_path.read_text().strip())
+            pid = int((config.RUN / "wake.lock").read_text().strip())
             os.kill(pid, signal.SIGTERM)
-        except (OSError, ValueError, FileNotFoundError):
+        except (OSError, ValueError):
             pass
 
-        # 2) garante: mata qualquer wake_daemon sobrando
+        # Só o interpretador do venv rodando o daemon (não editores abertos).
         subprocess.run(
-            ["pkill", "-f", "wake_daemon.py"],
+            ["pkill", "-f", r"\.venv/bin/python .*wake_daemon\.py"],
             capture_output=True,
         )
 

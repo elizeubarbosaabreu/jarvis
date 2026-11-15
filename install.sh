@@ -40,6 +40,7 @@ if [ -d "$EXT_SRC" ]; then
   mkdir -p "$HOME/.local/share/gnome-shell/extensions"
   rm -rf "$EXT_DIR"
   cp -r "$EXT_SRC" "$EXT_DIR"
+  sed -i "s#__JARVIS_ROOT__#$ROOT#g" "$EXT_DIR/extension.js"
   python3 - "$EXT_UUID" <<'PY'
 import ast, subprocess, sys
 uuid = sys.argv[1]
@@ -56,11 +57,12 @@ except Exception as exc:
 PY
 fi
 
-chmod +x run.sh wake_daemon.py
+chmod +x run.sh wake_daemon.py jarvis-ctl
 
-echo "==> comando 'jarvis' em ~/.local/bin"
+echo "==> comandos 'jarvis' e 'jarvis-ctl' em ~/.local/bin"
 mkdir -p "$HOME/.local/bin"
 ln -sf "$ROOT/run.sh" "$HOME/.local/bin/jarvis"
+ln -sf "$ROOT/jarvis-ctl" "$HOME/.local/bin/jarvis-ctl"
 
 if [ "$AUTOSTART" = 1 ]; then
   echo "==> autostart da palavra-chave"
@@ -75,9 +77,9 @@ if [ "$AUTOSTART" = 1 ]; then
 Type=Application
 Name=JARVIS
 Comment=Assistente por voz com rosto ASCII
-Exec=$ROOT/run.sh
+Exec=$ROOT/jarvis-ctl open
 Path=$ROOT
-Terminal=true
+Terminal=false
 Icon=utilities-terminal
 Categories=Utility;
 EOF
@@ -107,9 +109,9 @@ echo
 echo "Pronto."
 echo "  falar 'Olá Jarvis'  -> abre o terminal"
 echo "  jarvis              -> abre manualmente"
-echo "  botão JARVIS na área de trabalho  -> abre pelo menu/launcher"
-echo "  desligar o jarvis (por voz)  -> encerra tudo até ser chamado novamente"
-echo "  desligar autostart  -> rm ~/.config/autostart/jarvis-wake.desktop"
+echo "  botão no painel     -> ícone de microfone (após sair e entrar)"
+echo "  atalho na área de trabalho -> se os ícones do desktop estiverem ativos"
+echo "  jarvis off          -> desliga tudo até ser chamado de novo"
 echo
 echo "Se acabou de instalar: saia e entre na sessão uma vez para o GNOME"
 echo "carregar a extensão de controle de janelas (minimizar/maximizar/área de trabalho)."

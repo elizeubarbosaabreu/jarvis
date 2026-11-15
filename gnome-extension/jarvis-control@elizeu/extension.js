@@ -1,14 +1,23 @@
 /* Jarvis Control — expõe controle de janelas por DBus para o assistente.
  * Funciona no Wayland porque roda dentro do próprio GNOME Shell.
  */
+import Clutter from 'gi://Clutter';
 import Gio from 'gi://Gio';
+import GLib from 'gi://GLib';
+import GObject from 'gi://GObject';
 import Meta from 'gi://Meta';
 import Shell from 'gi://Shell';
+import St from 'gi://St';
 import * as Main from 'resource:///org/gnome/shell/ui/main.js';
+import * as PanelMenu from 'resource:///org/gnome/shell/ui/panelMenu.js';
 import {Extension} from 'resource:///org/gnome/shell/extensions/extension.js';
 
 const BUS_NAME = 'br.jarvis.Control';
 const OBJECT_PATH = '/br/jarvis/Control';
+
+// Substituído pelo install.sh com o caminho real do projeto.
+const JARVIS_ROOT = '__JARVIS_ROOT__';
+const JARVIS_CTL = `${JARVIS_ROOT}/jarvis-ctl`;
 
 const IFACE_XML = `
 <node>
@@ -48,6 +57,60 @@ const IFACE_XML = `
   </interface>
 </node>`;
 
+/* Botão do painel: clique esquerdo abre o assistente; clique direito abre o
+ * menu com "Abrir" e "Desligar".
+ */
+const JarvisButton = GObject.registerClass(
+class JarvisButton extends PanelMenu.Button {
+    _init() {
+        super._init(0.0, 'Jarvis', false);
+
+        this.add_child(new St.Icon({
+            icon_name: 'audio-input-microphone-symbolic',
+            style_class: 'system-status-icon',
+        }));
+
+        this.menu.addAction('Abrir JARVIS', () => this._openJarvis());
+        this.menu.addAction('Desligar JARVIS', () => this._stopJarvis());
+    }
+
+    vfunc_event(event) {
+        const type = event.type();
+
+        if (type === Clutter.EventType.BUTTON_PRESS) {
+            if (event.get_button() === 3) {
+                this.menu.toggle();
+                return Clutter.EVENT_STOP;
+            }
+            this._openJarvis();
+            return Clutter.EVENT_STOP;
+        }
+
+        if (type === Clutter.EventType.TOUCH_BEGIN) {
+            this._openJarvis();
+            return Clutter.EVENT_STOP;
+        }
+
+        return Clutter.EVENT_PROPAGATE;
+    }
+
+    _openJarvis() {
+        try {
+            GLib.spawn_command_line_async(`"${JARVIS_CTL}" open`);
+        } catch (e) {
+            logError(e, 'Jarvis: falha ao abrir');
+        }
+    }
+
+    _stopJarvis() {
+        try {
+            GLib.spawn_command_line_async(`"${JARVIS_CTL}" off`);
+        } catch (e) {
+            logError(e, 'Jarvis: falha ao desligar');
+        }
+    }
+});
+
 export default class JarvisControlExtension extends Extension {
     enable() {
         this._dbus = Gio.DBusExportedObject.wrapJSObject(IFACE_XML, this);
@@ -60,9 +123,16 @@ export default class JarvisControlExtension extends Extension {
             null,
             null
         );
+
+        this._button = new JarvisButton();
+        Main.panel.addToStatusArea('jarvis-open', this._button, 0, 'right');
     }
 
     disable() {
+        if (this._button) {
+            this._button.destroy();
+            this._button = null;
+        }
         if (this._ownerId) {
             Gio.bus_unown_name(this._ownerId);
             this._ownerId = null;

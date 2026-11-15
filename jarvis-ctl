@@ -1,0 +1,127 @@
+#!/usr/bin/env bash
+# jarvis-ctl — abre, religa e desliga o Jarvis por completo.
+#
+#   jarvis-ctl open       religa a escuta e abre o assistente (ou foca a janela)
+#   jarvis-ctl wake       garante a escuta, respeitando o desligamento
+#   jarvis-ctl wake-open  religa a escuta (usado pelo run.sh)
+#   jarvis-ctl off        desliga app + escuta e bloqueia o autostart
+#   jarvis-ctl status     mostra o estado atual
+set -euo pipefail
+
+ROOT="$(cd "$(dirname "$(readlink -f "$0")")" && pwd)"
+PY="$ROOT/.venv/bin/python"
+WAKE="$ROOT/wake_daemon.py"
+RUN_DIR="$ROOT/run"
+MARKER="$RUN_DIR/disabled"
+LOCK="$RUN_DIR/jarvis.lock"
+
+# Padrões específicos para não atingir editores abertos nos mesmos arquivos.
+PAT_WAKE='\.venv/bin/python .*wake_daemon\.py'
+PAT_APP='\.venv/bin/python -m jarvis\.app'
+
+mkdir -p "$RUN_DIR" "$ROOT/logs"
+
+wake_running() { pgrep -f "$PAT_WAKE" >/dev/null 2>&1; }
+app_running() { pgrep -f "$PAT_APP" >/dev/null 2>&1; }
+
+start_wake() {
+    rm -f "$MARKER"
+    if wake_running; then
+        echo "escuta da palavra-chave já está ativa"
+        return 0
+    fi
+    # O daemon já grava em logs/jarvis.log pelo próprio RotatingFileHandler.
+    setsid nohup "$PY" "$WAKE" >/dev/null 2>&1 &
+    echo "escuta da palavra-chave ativada"
+}
+
+open_terminal() {
+    local runner="$ROOT/run.sh"
+    local cmd="exec '$runner'"
+    local cand
+    local -a args
+    for cand in gnome-terminal x-terminal-emulator konsole xterm; do
+        command -v "$cand" >/dev/null 2>&1 || continue
+        case "$cand" in
+            gnome-terminal)      args=("$cand" "--title=JARVIS" -- bash -lc "$cmd") ;;
+            x-terminal-emulator) args=("$cand" -T JARVIS -e bash -lc "$cmd") ;;
+            konsole)             args=("$cand" -p tabtitle=JARVIS -e bash -lc "$cmd") ;;
+            xterm)               args=("$cand" -T JARVIS -e bash -lc "$cmd") ;;
+        esac
+        setsid nohup "${args[@]}" >/dev/null 2>&1 &
+        return 0
+    done
+    echo "nenhum terminal gráfico encontrado" >&2
+    return 1
+}
+
+focus_app() {
+    gdbus call --session \
+        --dest br.jarvis.Control \
+        --object-path /br/jarvis/Control \
+        --method br.jarvis.Control.Activate JARVIS >/dev/null 2>&1 || true
+}
+
+do_off() {
+    mkdir -p "$RUN_DIR"
+    touch "$MARKER"
+    systemctl --user stop jarvis-wake.service >/dev/null 2>&1 || true
+    pkill -INT -f "$PAT_WAKE" 2>/dev/null || true
+    pkill -INT -f "$PAT_APP" 2>/dev/null || true
+    local i
+    for i in $(seq 1 25); do
+        if ! wake_running && ! app_running; then
+            break
+        fi
+        sleep 0.1
+    done
+    pkill -KILL -f "$PAT_WAKE" 2>/dev/null || true
+    pkill -KILL -f "$PAT_APP" 2>/dev/null || true
+    rm -f "$LOCK"
+    echo "Jarvis desligado. Ele fica em silêncio até ser chamado pelo menu,"
+    echo "pelo botão do painel ou pelo comando 'jarvis'."
+}
+
+do_status() {
+    if [ -e "$MARKER" ]; then
+        echo "estado: desligado (autostart bloqueado)"
+    else
+        echo "estado: ligado"
+    fi
+    if wake_running; then echo "escuta: ativa"; else echo "escuta: parada"; fi
+    if app_running; then echo "assistente: aberto"; else echo "assistente: fechado"; fi
+}
+
+case "${1:-open}" in
+    open)
+        start_wake
+        if app_running; then
+            focus_app
+            echo "Jarvis já está aberto; janela trazida para frente."
+            exit 0
+        fi
+        if [ -t 0 ] && [ -t 1 ]; then
+            exec "$ROOT/run.sh"
+        fi
+        open_terminal
+        ;;
+    wake)
+        if [ -e "$MARKER" ]; then
+            exit 0
+        fi
+        start_wake
+        ;;
+    wake-open)
+        start_wake
+        ;;
+    off|desligar|stop)
+        do_off
+        ;;
+    status|estado)
+        do_status
+        ;;
+    *)
+        echo "uso: jarvis-ctl {open|wake|off|status}" >&2
+        exit 2
+        ;;
+esac

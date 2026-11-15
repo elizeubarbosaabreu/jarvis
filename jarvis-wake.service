@@ -6,8 +6,8 @@ PartOf=graphical-session.target
 [Service]
 Type=simple
 WorkingDirectory=/home/elizeu/jarvis
-ExecStart=/home/elizeu/jarvis/.venv/bin/python /home/elizeu/jarvis/wake_daemon.py
-Restart=always
+ExecStart=/home/elizeu/jarvis/jarvis-ctl wake
+Restart=on-failure
 RestartSec=3
 Environment=PYTHONUNBUFFERED=1
 Environment=DISPLAY=:0
